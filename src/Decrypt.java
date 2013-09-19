@@ -1,20 +1,38 @@
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
- * Basic program that decrypts Caesar and Vigenere ciphers.
+ * Program that decrypts Caesar and Vigenere ciphers. The Vigenere cryptanalysis
+ * does not require a key. The algorithm will figure out the most likely key's
+ * and and try to decrypt the ciphertext.
  * 
  * @author Dejan Ristic
  * 
  */
 public class Decrypt {
 
-	private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	private static final boolean DEBUG = true;
+
 	private static final int ALPHABET_SIZE = 26;
 	private static final int ASCII_ALPHABET_BOUNDS = 90;
 
+	// From Assignment
 	private static final String CAESAR_ENCRYPTED_STRING = "YQIIKHUOEKYXQTHQJXUHRUJXUVYHIJCQDXUHUJXQDJXUIUSEDTCQDYDHECU";
+
+	// From Assignment
+	private static final String VIGENERE_ENCRYPTED_STRING = "KAFZCGFCNRRKGQFVPLFCIPGJJHCCYQFGGVGJJHCCIHGDZREPAURMRHXSEELGOSRWSUGRWSPWJSXEGWTSTSEQKHZSLFCAVVYVVVVWCKCRSICQKBJXYONSUSLOAOPIYUDSWSPHCBUMJRXSUXFHOTFVRKGWIWFHGFZHGREMSIDRTSYELGYSYEBICQVVCFQUEMRLQBTEKHTOJGMYGFZREQGOIPWHXSICNXDZZGQSCQVMLVEVFSJEWHRGMXTHIYJHFHYERZCGLRARPGKMRXVWFRYOUCSILVQBRRBDNCKSDRVVVVNDTOESGGUQYSMOCRDMLLUHIERRTGYEBVRSEXMXTHVBREQCBHMONOIWMQVVVWCLFWFXADOSIEQWJOKACUGGLTNRUSUXMEGOSPCWQHVPJRPSGIPVQBJAYOMTISKDPCKLCUASRLPLIVKMERVPRGIWQQCEQVCBUWYWFCNRYJCWEMSQROTOCGVVVWAKQCCWQWCBUEPGKGJYCPCQYMLHCBUKMWDOTOGQVCTPYVUFFSKPQRVXFHUQYSMODCFOQZGFVXFHUBZXAKKSJXRHEVESJRIMFJRKGARPJOQUXMLJGJVVWNGMJXPRMSNERFJWEKYONHYILHVKFVIWTOWJGFHCIWSVRWTMMXUYVCURTRJGMXPHZREHXSICAOKQBOCHRWEKRUCQBSDHXSICDOGSKMLJVVFYEKVMFYNXVCLXMYGFKLCQGHNIFDFUFXRHPHYIKLPAPNSQKCICCDTOEHGWQBCCRRQYRGMXRZVQMQVVJJMUVVVWFLPWEIQVVCNIYUQTWSLFGDVSNOGTZKSUGRFYRWJOKXFHUSWVCHNOGXMSUKFVIHFTFVRKGARRYQFGYSUHFOEITHTSEHGQIDRVYGGCWSZQQLZSSVCRJXMEQCKXFHAGLHBHPZPWRDTHVHRRHSVPTHTMYIYYAOEHZXTRVRQROS";
+
+	// Another string to test vigenere with
+	private static final String VIGENERE_ENCRYPTED_STRING_TWO = "RIKVBIYBITHUSEVAZMMLTKASRNHPNPZICSWDSVMBIYFQEZUBZPBRGYNTBURMBECZQKBMBPAWIXSOFNUZECNRAZFPHIYBQEOCTTIOXKUNOHMRGCNDDXZWIRDVDRZYAYYICPUYDHCKXQIECIEWUICJNNACSAZZZGACZHMRGXFTILFNNTSDAFGYWLNICFISEAMRMORPGMJLUSTAAKBFLTIBYXGAVDVXPCTSVVRLJENOWWFINZOWEHOSRMQDGYSDOPVXXGPJNRVILZNAREDUYBTVLIDLMSXKYEYVAKAYBPVTDHMTMGITDZRTIOVWQIECEYBNEDPZWKUNDOZRBAHEGQBXURFGMUECNPAIIYURLRIPTFOYBISEOEDZINAISPBTZMNECRIJUFUCMMUUSANMMVICNRHQJMNHPNCEPUSQDMIVYTSZTRGXSPZUVWNORGQJMYNLILUKCPHDBYLNELPHVKYAYYBYXLERMMPBMHHCQKBMHDKMTDMSSJEVWOPNGCJMYRPYQELCDPOPVPBIEZALKZWTOPRYFARATPBHGLWWMXNHPHXVKBAANAVMNLPHMEMMSZHMTXHTFMQVLILOVVULNIWGVFUCGRZZKAUNADVYXUDDJVKAYUYOWLVBEOZFGTHHSPJNKAYICWITDARZPVU";
+
 	private static final float[] normalEnglishLetterFrequency = new float[] {
 			8.167f, 1.492f, 2.782f, 4.253f, 12.702f, 2.228f, 2.015f, 6.094f,
 			6.966f, 0.153f, 0.772f, 4.025f, 2.406f, 6.749f, 7.507f, 1.929f,
@@ -26,22 +44,28 @@ public class Decrypt {
 	public static void main(String[] args) {
 		Decrypt decrypt = new Decrypt();
 
+		// Start timer to keep track of execution time.
 		decrypt.mTime = System.currentTimeMillis();
-		decrypt.decryptVigenere();
+
+		// Caesar Cryptanalysis
+		System.out
+				.println("----------------------Caesar-------------------------");
+		decrypt.decryptCaesarAllKeys(CAESAR_ENCRYPTED_STRING);
+		System.out.println();
+		char[] solution = decrypt.decryptCaesarWithKey(CAESAR_ENCRYPTED_STRING,
+				10);
+		System.out.println("KEY: 10 " + String.copyValueOf(solution));
+
+		// Vigenere Cryptanalysis
+		System.out
+				.println("----------------------Vigenere-------------------------");
+		decrypt.decryptVigenereWithNoKey(VIGENERE_ENCRYPTED_STRING);
+
 		decrypt.mTime = System.currentTimeMillis() - decrypt.mTime;
+
+		System.out.println();
 		System.out.println("Time in millis: " + String.valueOf(decrypt.mTime));
 
-		/*
-		 * // Used this method to find out the key.
-		 * decrypt.decryptCaesarAllKeys(CAESAR_ENCRYPTED_STRING);
-		 * 
-		 * // Same as above, but with the key specified. char[] solution =
-		 * decrypt.decryptCaesarWithKey(CAESAR_ENCRYPTED_STRING, 10);
-		 * System.out.println(); System.out.println(solution);
-		 * System.out.println();
-		 * 
-		 * decrypt.createVigenereTable(ALPHABET);
-		 */
 	}
 
 	/**
@@ -98,118 +122,244 @@ public class Decrypt {
 		return solution.toString().toCharArray();
 	}
 
-	private void decryptVigenere() {
-		String test = "RIKVBIYBITHUSEVAZMMLTKASRNHPNPZICSWDSVMBIYFQEZUBZPBRGYNTBURMBECZQKBMBPAWIXSOFNUZECNRAZFPHIYBQEOCTTIOXKUNOHMRGCNDDXZWIRDVDRZYAYYICPUYDHCKXQIECIEWUICJNNACSAZZZGACZHMRGXFTILFNNTSDAFGYWLNICFISEAMRMORPGMJLUSTAAKBFLTIBYXGAVDVXPCTSVVRLJENOWWFINZOWEHOSRMQDGYSDOPVXXGPJNRVILZNAREDUYBTVLIDLMSXKYEYVAKAYBPVTDHMTMGITDZRTIOVWQIECEYBNEDPZWKUNDOZRBAHEGQBXURFGMUECNPAIIYURLRIPTFOYBISEOEDZINAISPBTZMNECRIJUFUCMMUUSANMMVICNRHQJMNHPNCEPUSQDMIVYTSZTRGXSPZUVWNORGQJMYNLILUKCPHDBYLNELPHVKYAYYBYXLERMMPBMHHCQKBMHDKMTDMSSJEVWOPNGCJMYRPYQELCDPOPVPBIEZALKZWTOPRYFARATPBHGLWWMXNHPHXVKBAANAVMNLPHMEMMSZHMTXHTFMQVLILOVVULNIWGVFUCGRZZKAUNADVYXUDDJVKAYUYOWLVBEOZFGTHHSPJNKAYICWITDARZPVU";
-		HashMap<String, SequenceData> finalMap = countRepeatedSequencesAndGetSpacesBetweenThem(test);
+	private void decryptVigenereWithNoKey(String ciphertext) {
 
-		// The most common multiple is most likely the size of our key word.
-		int mostCommonMultiple = getMostCommonMultipleFromAllSequences(finalMap);
+		HashMap<String, SequenceData> finalMap = countRepeatedSequencesAndGetSpacesBetweenThem(ciphertext);
 
-		String keyword = computeMostLikelyKeyword(mostCommonMultiple, test);
+		// The most common multiple is most likely the size of our key word, but
+		// for safety we allow to check the nth most common multiples just in
+		// case the most common one was not correct.
+		int[] mostCommonMultiples = getMostCommonFactorsFromAllSequences(
+				finalMap, 4);
+
+		for (int i = 0; i < mostCommonMultiples.length; ++i) {
+			char keyword[] = computeMostLikelyKeyword(mostCommonMultiples[i],
+					ciphertext);
+			decryptVigenereWithKey(ciphertext, String.copyValueOf(keyword));
+		}
 
 	}
 
-	private String computeMostLikelyKeyword(int length, String encryptedString) {
+	private void decryptVigenereWithKey(String text, final String key) {
+		String res = "";
+		text = text.toUpperCase();
+		for (int i = 0, j = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+			if (c < 'A' || c > 'Z')
+				continue;
+			res += (char) ((c - key.charAt(j) + 26) % 26 + 'A');
+			j = ++j % key.length();
+		}
+		System.out.println(res);
+	}
 
+	private char[] computeMostLikelyKeyword(int length, String encryptedString) {
+
+		// HashMap to store our frequency analysis data.
 		HashMap<Character, FrequencyData> frequencies = new HashMap<Character, FrequencyData>();
+
+		// Results for chiSquared computations.
+		double[] chiSquaredResults = null;
+
+		// The final resulting secret key.
+		char[] secretKey = new char[length];
 
 		// For every index in the most likely length.
 		for (int i = 0; i < length; ++i) {
 
+			chiSquaredResults = new double[26];
+
 			// Check all Caesar cipher possibilities for the current index
 			// position.
 			for (int k = 0; k < 26; ++k) {
+
+				double totalChiScore = 0;
+
 				frequencies.clear();
+
+				// Decrypt our encrypted string with the shift k.
 				char[] caesar = decryptCaesarWithKey(encryptedString, k);
-				int size = caesar.length;
-				// For every nth (n == length) letter in the encrypted String.
-				for (int j = 0; j < encryptedString.length(); j = j + length) {
 
+				// For every nth (n == most likely length of keyword) letter in
+				// the encrypted String.
+				for (int j = i; j < encryptedString.length(); j = j + length) {
+
+					// Get that key after the Caesar shift k.
 					Character key = caesar[j];
-					if (k == 0 && i == 0)
-						if (key == 'Z')
-							System.out.print(key);
 
+					// Count the number of occurrences said key appears in the
+					// set of all nth characters.
 					if (frequencies.containsKey(key)) {
 						FrequencyData data = frequencies.get(key);
 						data.numOfOccurrences++;
-						data.percentage = ((float) data.numOfOccurrences / (float) size);
 						frequencies.put(key, data);
 					} else {
 						FrequencyData data = new FrequencyData();
 						data.numOfOccurrences = 1;
-						data.percentage = ((float) data.numOfOccurrences / (float) size);
 						frequencies.put(key, data);
 					}
 
 				}
 
-				if (k == 1 && i == 0)
-					compareFrequencieToEnglishNormals(frequencies);
+				// After all occurrences are counted, we can now use the chi
+				// squared function to add to our total chi score for this
+				// iteration.
+				for (Character key : frequencies.keySet()) {
+
+					FrequencyData data = frequencies.get(key);
+					data.chiSquared = computeChiSquared(data.numOfOccurrences,
+							frequencies.size(), key);
+					totalChiScore += data.chiSquared;
+
+				}
+
+				// Keep the total chi scores from all 25 shifts, so we can find
+				// the lowest later.
+				chiSquaredResults[k] += totalChiScore;
 
 			}
+
+			// Now we can go through all the chiScores and find the lowest one
+			// out of the 25 possible shifts. The lowest score is most
+			// comparable to English.
+			int winningIndex = 0;
+			double min = Integer.MAX_VALUE;
+			for (int l = 0; l < chiSquaredResults.length; ++l) {
+				if (chiSquaredResults[l] < min) {
+					min = chiSquaredResults[l];
+					winningIndex = l;
+				}
+			}
+
+			// Manipulate the char a bit, so we have it in a form that makes it
+			// easy to use with the rest of our code.
+			char secretChar = (char) ('A' + (winningIndex == 0 ? 0
+					: (char) (26 - winningIndex)));
+
+			// Finally store the ith character of the keyword and repeat untill
+			// length.
+			secretKey[i] = secretChar;
 		}
-		return null;
+
+		System.out.println("KEYWORD: " + String.copyValueOf(secretKey));
+
+		return secretKey;
 	}
 
-	private void compareFrequencieToEnglishNormals(
-			HashMap<Character, FrequencyData> frequencies) {
-		Iterator<Character> iterator = frequencies.keySet().iterator();
+	/**
+	 * The Chi-squared Statistic is a measure of how similar two categorical
+	 * probability distributions are. If the two distributions are identical,
+	 * the chi-squared statistic is 0, if the distributions are very different,
+	 * some higher number will result
+	 * 
+	 * @param numOfOccurences
+	 * @param lengthOfCipher
+	 * @param englishLetter
+	 * @return
+	 */
+	private double computeChiSquared(int numOfOccurences, int lengthOfCipher,
+			char englishLetter) {
 
-		while (iterator.hasNext()) {
-			Character key = iterator.next();
-			FrequencyData value = frequencies.get(key);
+		int englishIndex = englishLetter - 65;
+		double englishNormal = (normalEnglishLetterFrequency[englishIndex] / 100);
+		double factor = lengthOfCipher * englishNormal;
 
-			System.out.println(key + " Percent:"
-					+ String.valueOf(value.percentage));
-
-		}
+		double chiSquared = Math.pow(numOfOccurences - factor, 2.0) / factor;
+		return chiSquared;
 	}
 
 	/**
 	 * This method goes through the set of data collected when analyzing the
-	 * encrypted string and returns the most common multiple shared by all
+	 * encrypted string and returns the most common factors shared by all
 	 * repeated sequences.
 	 * 
 	 * @param map
-	 * @return int
+	 * @return int []
 	 */
-	private int getMostCommonMultipleFromAllSequences(
-			HashMap<String, SequenceData> map) {
+	@SuppressWarnings("unchecked")
+	private int[] getMostCommonFactorsFromAllSequences(
+			HashMap<String, SequenceData> map, int maxFactors) {
 
 		Collection<SequenceData> data = map.values();
 
-		HashMap<Integer, Integer> multiples = new HashMap<Integer, Integer>();
+		HashMap<Integer, Integer> factors = new HashMap<Integer, Integer>();
 
 		for (SequenceData sequence : data) {
 			if (sequence.numOfoccurrences > 1) {
 				int spacing = sequence.spaceBetweenOccurrences;
 				for (int i = 2; i < spacing; ++i) {
-					if (isMultipleOf(i, spacing)) {
-						if (multiples.containsKey(i)) {
-							multiples.put(i, multiples.get(i) + 1);
+					if (isFactorOf(i, spacing)) {
+						if (factors.containsKey(i)) {
+							factors.put(i, factors.get(i) + 1);
 						} else {
-							multiples.put(i, 1);
+							factors.put(i, 1);
 						}
 					}
 				}
 			}
 		}
 
-		int timesMultipleOccured = 0;
-		int multiple = 0;
-		for (Integer key : multiples.keySet()) {
-			Integer value = multiples.get(key);
-			if (value > timesMultipleOccured) {
-				timesMultipleOccured = value;
-				multiple = key;
-			}
-		}
+		Map<Integer, Integer> sorted = sortByComparator(factors);
 
-		return multiple;
+		int[] mostCommonFactors = new int[maxFactors];
+
+		if (DEBUG) {
+			System.out.println(maxFactors + " Most Common Factors");
+			System.out.println("--------------------------");
+		}
+		for (int i = 0; i < mostCommonFactors.length; ++i) {
+			Entry<Integer, Integer> entry = (Entry<Integer, Integer>) sorted
+					.entrySet().toArray()[i];
+			mostCommonFactors[i] = entry.getKey();
+
+			if (DEBUG)
+				System.out.println("Factor : " + entry.getKey()
+						+ " Occurences : " + entry.getValue());
+		}
+		if (DEBUG)
+			System.out.println();
+
+		return mostCommonFactors;
 	}
 
-	private boolean isMultipleOf(int x, int y) {
+	/**
+	 * Helper method to sort a HashMap by comparator.
+	 * 
+	 * @param unsortMap
+	 * @param order
+	 * @return
+	 */
+	private static Map<Integer, Integer> sortByComparator(
+			Map<Integer, Integer> unsortMap) {
+
+		List<Entry<Integer, Integer>> list = new LinkedList<Entry<Integer, Integer>>(
+				unsortMap.entrySet());
+
+		// Sorting the list based on values
+		Collections.sort(list, new Comparator<Entry<Integer, Integer>>() {
+			public int compare(Entry<Integer, Integer> o1,
+					Entry<Integer, Integer> o2) {
+				return o2.getValue().compareTo(o1.getValue());
+			}
+		});
+
+		// Maintaining insertion order with the help of LinkedList
+		Map<Integer, Integer> sortedMap = new LinkedHashMap<Integer, Integer>();
+		for (Entry<Integer, Integer> entry : list) {
+			sortedMap.put(entry.getKey(), entry.getValue());
+		}
+
+		return sortedMap;
+	}
+
+	/**
+	 * Helper method to determine if x is a factor of y.
+	 * 
+	 * @param x
+	 * @param y
+	 * @return
+	 */
+	private boolean isFactorOf(int x, int y) {
 		if (y % x == 0)
 			return true;
 		return false;
@@ -267,8 +417,13 @@ public class Decrypt {
 			}
 		}
 
-		printHashMap(vigenereMap);
+		if (DEBUG) {
+			System.out.println("Sequences and Spacing");
+			System.out.println("--------------------------");
+			printHashMap(vigenereMap);
+			System.out.println();
 
+		}
 		return vigenereMap;
 	}
 
@@ -285,7 +440,7 @@ public class Decrypt {
 		// If there is only 2 occurrences of the sequence, then we do not have
 		// to use the last occurrences index. This is because the spacing starts
 		// at the index the first occurrence was found. If there is a third
-		// occurrence, we need to get the spacing from the second occurence to
+		// occurrence, we need to get the spacing from the second occurrence to
 		// the third one.
 		if (data.numOfoccurrences < 3) {
 			data.lastIndex = index;
@@ -295,6 +450,11 @@ public class Decrypt {
 		}
 	}
 
+	/**
+	 * Helper method to print a HashMap of String, SequenceData.
+	 * 
+	 * @param map
+	 */
 	private void printHashMap(HashMap<String, SequenceData> map) {
 		Iterator<String> iterator = map.keySet().iterator();
 
@@ -349,14 +509,26 @@ public class Decrypt {
 		}
 	}
 
+	/**
+	 * Helper class that stores sequence data.
+	 * 
+	 * @author Dejan Ristic
+	 * 
+	 */
 	public class SequenceData {
 		public int spaceBetweenOccurrences;
 		public int lastIndex;
 		public int numOfoccurrences;
 	}
 
+	/**
+	 * Helper class that stores frequency data.
+	 * 
+	 * @author Dejan Ristic
+	 * 
+	 */
 	public class FrequencyData {
 		public int numOfOccurrences;
-		public float percentage;
+		public double chiSquared;
 	}
 }
