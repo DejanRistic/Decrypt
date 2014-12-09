@@ -1,4 +1,4 @@
 Decrypt
 =======
 
-Simple decrypt program for class
+Some simple decrypt algorithms.
